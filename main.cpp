@@ -5,45 +5,7 @@
 
 #include <boost/algorithm/string.hpp>
 
-bool readFile( const std::string& filepath, std::string& result )
-{
-  std::ifstream file(filepath.c_str());
-  if( !file.is_open() )
-    return false;
-
-  // Get length of file
-  file.seekg(0, file.end);
-  const int length = file.tellg();
-  file.seekg(0, file.beg);
-
-  // If file content is empty, exit
-  if( length < 1 )
-    return true;
-
-  // Read the file
-  result.resize( length );
-  file.read(&result[0], length);
-
-  // Close the file and return good read
-  file.close();
-  return true;
-}
-
-bool writeFile( const std::string& filepath, const std::string& content )
-{
-  // Try to open the file
-  std::ofstream new_file(filepath, std::ios::trunc);
-  if( !new_file.is_open() )
-    return false;
-
-  // Write content into
-  new_file << content;
-
-  // Closing file
-  new_file.close();
-
-  return true;
-}
+#include "utils.hpp"
 
 std::vector<std::string> getFilePaths(int argc, char** argv)
 {
@@ -66,7 +28,7 @@ void update(const std::string& filepath)
 {
   // Try to read file
   std::string content;
-  if(!readFile(filepath, content))
+  if(!utils::file::read(filepath, content))
   {
     std::cerr << "Can't read file: " << filepath << std::endl;
     return;
@@ -77,16 +39,18 @@ void update(const std::string& filepath)
   boost::algorithm::split(lines, content, boost::is_any_of("\n"));
 
   std::string new_content;
-  const std::string target {"#include \""};
+  const std::string target_begin {"#include <"};
+  const std::string target_end {".hpp>"};
   for( auto& line : lines )
   {
-    if( boost::starts_with(line, target) )
+    if( boost::starts_with(line, target_begin) &&
+        boost::ends_with(line, target_end) )
     {
       std::cout << "Line: " << line << std::endl;
 
-      std::string include_content = line.substr(target.length());
+      std::string include_content = line.substr(target_begin.length());
       boost::algorithm::trim_right(include_content);
-      line = "#include <" + include_content.substr(0, include_content.length() - 1) + ">";
+      line = "#include <daneel/" + include_content.substr(0, include_content.length() - 1) + ">";
 
       std::cout << "Replaced by: " << line << std::endl;
     }
@@ -95,7 +59,7 @@ void update(const std::string& filepath)
   }
 
   // Override file
-  writeFile(filepath, new_content);
+  utils::file::write(filepath, new_content);
 }
 
 int main(int argc, char** argv)
